@@ -1,0 +1,33 @@
+{
+  "model": "bert-base-uncased",
+  "timestamp": "20251129_220731",
+  "configuration": {
+    "model": "bert-base-uncased",
+    "max_length": 512,
+    "epochs": 1,
+    "batch_size": 4,
+    "learning_rate": 2e-05,
+    "warmup_steps": 500,
+    "threshold": 0.5,
+    "device": "cpu",
+    "output_dir": "./outputs"
+  },
+  "data": {
+    "num_labels": 111,
+    "train_samples": 48,
+    "test_samples": 12
+  },
+  "training": {
+    "final_loss": 0.7085272918144861
+  },
+  "evaluation": {
+    "micro_f1": 0.1134020618556701,
+    "micro_precision": 0.06276747503566334,
+    "micro_recall": 0.5866666666666667,
+    "macro_f1": 0.06235027411498,
+    "macro_precision": 0.038386113386113384,
+    "macro_recall": 0.23423423423423423,
+    "samples_f1": 0.11174480254221993,
+    "subset_accuracy": 0.0
+  }
+}
