@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Mac
+.DS_Store
+
+# Project specific
+outputs/
+models/
+*.pt
+*.pth
+*.ckpt
+
+# Data (varsa büyük dosyalar)
+data/*.json
+data/*.csv
+!data/README.md
