@@ -12,50 +12,56 @@ Multi-label classification system using BERT-based models to tag Tactics, Techni
 ## 📁 Structure
 
 ```
-├── run_training.ipynb    # Google Colab training notebook
-├── main.py               # CLI training script
+├── main.py               # Training script
 ├── src/                  # Source code
-│   ├── data_loader.py
-│   ├── model.py
-│   ├── train.py
-│   └── evaluate.py
+│   ├── data_loader.py   # Dataset loading & preprocessing
+│   ├── model.py         # BERT model setup
+│   ├── train.py         # Training loop
+│   └── evaluate.py      # Evaluation metrics
 ├── data/                 # Dataset cache
 ├── outputs/              # Training results
 └── requirements.txt
 ```
 
-## 🚀 Quick Start (Google Colab)
-
-1. Open in Colab: `run_training.ipynb`
-2. Runtime → Change runtime type → **GPU (T4)**
-3. Run cells sequentially:
-   - Setup
-   - Training (BERT or SecBERT)
-   - Download results as ZIP
-
-**Training time:** ~40 minutes (T4 GPU)
-
-## 🛠️ Local Training
+## 🚀 Quick Start
 
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Train BERT model
 python main.py --model bert-base-uncased --epochs 3 --batch_size 16
+
+# Train SecBERT (security-specific)
+python main.py --model jackaduma/SecBERT --epochs 3 --batch_size 16
 ```
 
-## 📊 Models
+## 📊 Available Models
 
-- **BERT-base-uncased** - General purpose (recommended)
+- **bert-base-uncased** - General purpose (recommended)
 - **jackaduma/SecBERT** - Security domain specific
+- **roberta-base** - Alternative baseline
+- **distilbert-base-uncased** - Faster, lighter version
 
-## 📈 Performance Metrics
+## 📈 Results
 
-- Micro/Macro F1, Precision, Recall
-- Multi-label classification with BCEWithLogitsLoss
-- Results saved to `outputs/`
+Results are saved to `outputs/[model-name]_[timestamp]/`:
+- `final_model.pt` - Trained model
+- `evaluation_metrics.json` - F1, Precision, Recall
+- `training_history.json` - Loss curves
+- `labels.json` - Label mapping
 
-## 📚 Documentation
+## 🛠️ CLI Options
 
-- **[CTI_MITRE_ATTACK_DATASETS.md](CTI_MITRE_ATTACK_DATASETS.md)** - Dataset details
+```bash
+python main.py \
+  --model bert-base-uncased \
+  --epochs 3 \
+  --batch_size 16 \
+  --learning_rate 2e-5 \
+  --max_length 512 \
+  --device cuda
+```
 
 ---
 
