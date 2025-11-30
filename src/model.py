@@ -69,11 +69,12 @@ class FocalLoss(nn.Module):
 class BERTForMultiLabelClassification(nn.Module):
     """
     BERT-based model for multi-label classification.
-    Supports both BCEWithLogitsLoss and Focal Loss for training.
+    Supports BCEWithLogitsLoss, Focal Loss, and Weighted BCE for training.
     """
     
     def __init__(self, model_name: str, num_labels: int, dropout: float = 0.1, 
-                 use_focal_loss: bool = False, focal_alpha: float = 0.25, focal_gamma: float = 2.0):
+                 use_focal_loss: bool = False, focal_alpha: float = 0.25, focal_gamma: float = 2.0,
+                 pos_weight: torch.Tensor = None):
         """
         Initialize the model.
         
@@ -84,6 +85,7 @@ class BERTForMultiLabelClassification(nn.Module):
             use_focal_loss: Whether to use Focal Loss instead of BCE
             focal_alpha: Alpha parameter for Focal Loss (class balance weight)
             focal_gamma: Gamma parameter for Focal Loss (focusing parameter)
+            pos_weight: Positive class weights for each label (for weighted BCE)
         """
         super(BERTForMultiLabelClassification, self).__init__()
         
@@ -109,6 +111,9 @@ class BERTForMultiLabelClassification(nn.Module):
         if use_focal_loss:
             self.loss_fct = FocalLoss(alpha=focal_alpha, gamma=focal_gamma)
             print(f"Using Focal Loss (alpha={focal_alpha}, gamma={focal_gamma})")
+        elif pos_weight is not None:
+            self.loss_fct = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            print(f"Using Weighted BCE (avg pos_weight={pos_weight.mean():.2f})")
         else:
             self.loss_fct = nn.BCEWithLogitsLoss()
             print("Using BCEWithLogitsLoss")
@@ -149,7 +154,8 @@ class BERTForMultiLabelClassification(nn.Module):
 
 
 def load_model(model_name: str, num_labels: int, device: str = 'cuda', 
-               use_focal_loss: bool = False, focal_alpha: float = 0.25, focal_gamma: float = 2.0) -> BERTForMultiLabelClassification:
+               use_focal_loss: bool = False, focal_alpha: float = 0.25, focal_gamma: float = 2.0,
+               pos_weight: torch.Tensor = None) -> BERTForMultiLabelClassification:
     """
     Load and initialize a model.
     
@@ -160,6 +166,7 @@ def load_model(model_name: str, num_labels: int, device: str = 'cuda',
         use_focal_loss: Whether to use Focal Loss instead of BCE
         focal_alpha: Alpha parameter for Focal Loss
         focal_gamma: Gamma parameter for Focal Loss
+        pos_weight: Positive class weights for each label (for weighted BCE)
         
     Returns:
         Initialized model
@@ -167,11 +174,16 @@ def load_model(model_name: str, num_labels: int, device: str = 'cuda',
     print(f"Loading model: {model_name}")
     print(f"Number of labels: {num_labels}")
     
+    # Move pos_weight to device if provided
+    if pos_weight is not None and device == 'cuda' and torch.cuda.is_available():
+        pos_weight = pos_weight.cuda()
+    
     model = BERTForMultiLabelClassification(
         model_name, num_labels, 
         use_focal_loss=use_focal_loss,
         focal_alpha=focal_alpha,
-        focal_gamma=focal_gamma
+        focal_gamma=focal_gamma,
+        pos_weight=pos_weight
     )
     
     # Move to device
