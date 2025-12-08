@@ -2,6 +2,9 @@
 Data loading and preprocessing module for CTI-BERT TTP tagging.
 Handles loading and combining multiple MITRE ATT&CK datasets.
 
+Model: ibm-research/CTI-BERT - Domain-specific BERT pre-trained on CTI data
+Reference: https://huggingface.co/ibm-research/CTI-BERT
+
 Hybrid Dataset Mode (Default):
 - Combines tumeteor/Security-TTP-Mapping (14.9k samples)
 - sarahwei/cyber_MITRE_attack_tactics-and-techniques (654 samples)
@@ -293,7 +296,7 @@ def encode_labels(df: pd.DataFrame, label_list: list, label_column: str = 'label
 
 
 def prepare_data(
-    model_name: str = "bert-base-uncased",
+    model_name: str = "ibm-research/CTI-BERT",
     max_length: int = 512,
     use_hybrid: bool = True,
     dataset_name: str = "tumeteor/Security-TTP-Mapping"
@@ -371,7 +374,7 @@ def prepare_data(
 
 
 def load_datasets_and_prepare_dataloaders(
-    model_name: str = "bert-base-uncased",
+    model_name: str = "ibm-research/CTI-BERT",
     batch_size: int = 16,
     max_length: int = 512,
     use_hybrid: bool = True,

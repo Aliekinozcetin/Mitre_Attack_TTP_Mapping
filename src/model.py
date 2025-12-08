@@ -1,5 +1,10 @@
 """
 Model definition module for CTI-BERT TTP tagging.
+
+Uses ibm-research/CTI-BERT: A domain-specific BERT model pre-trained on 
+Cyber Threat Intelligence (CTI) data for improved performance on security tasks.
+
+Reference: https://huggingface.co/ibm-research/CTI-BERT
 """
 
 import torch
@@ -204,5 +209,5 @@ def load_model(model_name: str, num_labels: int, device: str = 'cuda',
 
 if __name__ == "__main__":
     # Test model loading
-    print("Testing BERT-base-uncased:")
-    model_bert = load_model("bert-base-uncased", num_labels=100, device='cpu')
+    print("Testing CTI-BERT:")
+    model_bert = load_model("ibm-research/CTI-BERT", num_labels=100, device='cpu')

@@ -1,10 +1,14 @@
-# MITRE ATT&CK TTP Mapping
+# MITRE ATT&CK TTP Mapping with CTI-BERT
 
-Multi-label classification system using BERT to tag Tactics, Techniques, and Procedures (TTPs) from MITRE ATT&CK framework.
+Multi-label classification system using **CTI-BERT** (IBM Research) to tag Tactics, Techniques, and Procedures (TTPs) from MITRE ATT&CK framework.
 
-# MITRE ATT&CK TTP Mapping
+## 🤖 Model
 
-Multi-label classification system using BERT to tag Tactics, Techniques, and Procedures (TTPs) from MITRE ATT&CK framework.
+**CTI-BERT** (`ibm-research/CTI-BERT`)
+- Domain-specific BERT pre-trained on Cyber Threat Intelligence data
+- Superior performance on security-related text understanding
+- Optimized for MITRE ATT&CK technique recognition
+- Reference: https://huggingface.co/ibm-research/CTI-BERT
 
 ## 🎯 Dataset
 
@@ -19,10 +23,10 @@ Multi-label classification system using BERT to tag Tactics, Techniques, and Pro
 ## 📁 Structure
 
 ```
-├── run_strategy_test.ipynb  # Modular strategy testing notebook
+├── run_strategy_test.ipynb  # Modular strategy testing notebook (CTI-BERT)
 ├── src/                      # Source code
-│   ├── data_loader.py       # Dataset loading & preprocessing
-│   ├── model.py             # BERT model with Focal Loss support
+│   ├── data_loader.py       # Dataset loading & preprocessing (CTI-BERT tokenizer)
+│   ├── model.py             # CTI-BERT model with Focal Loss support
 │   ├── train.py             # Training loop
 │   ├── evaluate.py          # Evaluation metrics
 │   └── strategies.py        # Class imbalance strategies
