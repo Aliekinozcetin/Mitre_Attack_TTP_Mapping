@@ -14,7 +14,7 @@ from transformers import AutoTokenizer
 import pandas as pd
 from typing import Dict, Tuple, List
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import ast
 
 
@@ -368,6 +368,50 @@ def prepare_data(
         'label_list': label_list,
         'num_labels': len(label_list)
     }
+
+
+def load_datasets_and_prepare_dataloaders(
+    model_name: str = "bert-base-uncased",
+    batch_size: int = 16,
+    max_length: int = 512,
+    use_hybrid: bool = True,
+    dataset_name: str = "tumeteor/Security-TTP-Mapping"
+) -> Tuple:
+    """
+    Alias for prepare_data that returns dataloaders instead of datasets.
+    Compatible with notebook code.
+    
+    Args:
+        model_name: Pretrained model name for tokenizer
+        batch_size: Batch size for dataloaders
+        max_length: Maximum sequence length
+        use_hybrid: If True, use hybrid dataset
+        dataset_name: Single dataset name (only used if use_hybrid=False)
+        
+    Returns:
+        Tuple of (train_loader, val_loader, test_dataset, label_encoder)
+        Note: val_loader is None (we don't use separate validation)
+    """
+    data = prepare_data(
+        model_name=model_name,
+        max_length=max_length,
+        use_hybrid=use_hybrid,
+        dataset_name=dataset_name
+    )
+    
+    # Create train dataloader
+    train_loader = DataLoader(
+        data['train_dataset'],
+        batch_size=batch_size,
+        shuffle=True
+    )
+    
+    return (
+        train_loader,           # train_loader
+        None,                   # val_loader (not used)
+        data['test_dataset'],   # test_dataset
+        data['label_list']      # label_encoder (label_list)
+    )
 
 
 if __name__ == "__main__":
