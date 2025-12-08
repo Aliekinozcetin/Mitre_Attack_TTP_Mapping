@@ -118,6 +118,10 @@ def load_hybrid_dataset(test_split_ratio: float = 0.15) -> Tuple[pd.DataFrame, p
         try:
             dataset = load_dataset(dataset_name)
             
+            # Debug: print available columns
+            if 'train' in dataset.keys():
+                print(f"   Available columns: {list(dataset['train'].column_names)}")
+            
             # Handle different split configurations
             if config.get('use_validation', False) and 'validation' in dataset.keys():
                 train_df = pd.DataFrame(dataset['train'])
@@ -141,6 +145,33 @@ def load_hybrid_dataset(test_split_ratio: float = 0.15) -> Tuple[pd.DataFrame, p
             text_col = config['text_column']
             label_col = config['label_column']
             
+            # Check if columns exist
+            if text_col not in train_df.columns:
+                print(f"   ⚠️  Text column '{text_col}' not found. Available: {list(train_df.columns)}")
+                # Try to find text column
+                possible_text_cols = ['text', 'description', 'content', 'sentence', 'question']
+                for col in possible_text_cols:
+                    if col in train_df.columns:
+                        text_col = col
+                        print(f"   ✅ Using '{col}' as text column")
+                        break
+                else:
+                    print(f"   ⚠️  No suitable text column found, skipping\n")
+                    continue
+            
+            if label_col not in train_df.columns:
+                print(f"   ⚠️  Label column '{label_col}' not found. Available: {list(train_df.columns)}")
+                # Try to find label column
+                possible_label_cols = ['labels', 'techniques', 'technique_id', 'technique', 'tactics']
+                for col in possible_label_cols:
+                    if col in train_df.columns:
+                        label_col = col
+                        print(f"   ✅ Using '{col}' as label column")
+                        break
+                else:
+                    print(f"   ⚠️  No suitable label column found, skipping\n")
+                    continue
+            
             if text_col in train_df.columns and label_col in train_df.columns:
                 train_df = train_df[[text_col, label_col]].rename(
                     columns={text_col: 'text', label_col: 'labels'}
@@ -153,7 +184,7 @@ def load_hybrid_dataset(test_split_ratio: float = 0.15) -> Tuple[pd.DataFrame, p
                 all_test_dfs.append(test_df)
                 print(f"   ✅ Added {len(train_df)} train + {len(test_df)} test samples\n")
             else:
-                print(f"   ⚠️  Missing columns, skipping\n")
+                print(f"   ⚠️  Missing required columns after auto-detection, skipping\n")
                 
         except Exception as e:
             print(f"   ❌ Error: {e}\n")
