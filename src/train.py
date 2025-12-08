@@ -178,4 +178,4 @@ def train_model(
 
 if __name__ == "__main__":
     print("Training module loaded successfully!")
-    print("Use this module through main.py for complete pipeline.")
+    print("Use this module through run_strategy_test.ipynb for complete pipeline.")
