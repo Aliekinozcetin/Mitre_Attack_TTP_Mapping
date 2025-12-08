@@ -5,6 +5,28 @@ This document lists publicly available datasets suitable for training BERT model
 
 ---
 
+## 🎯 Current Usage in This Project
+
+**Hybrid Dataset Configuration (Default)**
+
+We combine the following 3 datasets to improve label distribution and reduce class imbalance:
+
+1. **tumeteor/Security-TTP-Mapping** (14,936 samples)
+2. **sarahwei/cyber_MITRE_attack_tactics-and-techniques** (654 samples)  
+3. **Zainabsa99/mitre_attack** (508 samples)
+
+**Total: ~16,098 samples**
+
+This hybrid approach provides:
+- ✅ Better label coverage across techniques
+- ✅ Reduced class imbalance (less sparse than single dataset)
+- ✅ Diverse text sources (CTI reports + Q&A + descriptions)
+- ✅ Improved model generalization
+
+To use single dataset mode, set `use_hybrid=False` in `prepare_data()`.
+
+---
+
 ## 1. **sarahwei/cyber_MITRE_attack_tactics-and-techniques**
 
 **Platform:** Hugging Face  
@@ -28,6 +50,7 @@ This document lists publicly available datasets suitable for training BERT model
 - ❌ Small size (only 654 samples)
 - ✅ Good for understanding MITRE taxonomy
 - ⚠️ Limited to Q&A format, not actual threat reports
+- ✅ **Used in hybrid dataset**
 
 **Use Case:** Training/fine-tuning for MITRE ATT&CK knowledge, but too small for main training
 

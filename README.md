@@ -2,12 +2,19 @@
 
 Multi-label classification system using BERT to tag Tactics, Techniques, and Procedures (TTPs) from MITRE ATT&CK framework.
 
+# MITRE ATT&CK TTP Mapping
+
+Multi-label classification system using BERT to tag Tactics, Techniques, and Procedures (TTPs) from MITRE ATT&CK framework.
+
 ## 🎯 Dataset
 
-**tumeteor/Security-TTP-Mapping** (20,736 samples)
-- 14,936 training / 2,630 validation / 3,170 test
-- 499 unique MITRE ATT&CK techniques
-- Real CTI reports and threat descriptions
+**Hybrid Dataset (Default)** - Combines 3 sources for improved quality:
+- **tumeteor/Security-TTP-Mapping** (14,936 samples) - CTI reports
+- **sarahwei/cyber_MITRE_attack...** (654 samples) - MITRE Q&A
+- **Zainabsa99/mitre_attack** (508 samples) - Technique descriptions
+- **Total:** ~16,098 samples
+- **Labels:** MITRE ATT&CK techniques (T-codes)
+- **Advantage:** Better label distribution, reduced class imbalance
 
 ## 📁 Structure
 
@@ -58,7 +65,13 @@ The project implements 5 different strategies to handle severe class imbalance (
 Results are saved to `outputs/strategy_comparison_[timestamp]/`:
 - `strategy_comparison_[timestamp].json` - All strategy results
 - `strategy_comparison_[timestamp].csv` - Comparison table
-- Metrics: F1 (Top-5/10), Precision, Recall, Hamming Loss
+- **Metrics:** Micro F1, Recall@5, Precision@5, Recall@10, Precision@10, Example-Based Accuracy
+
+### Why These Metrics?
+- **Micro F1:** Overall performance across all labels
+- **Recall@K / Precision@K:** Ranking-based metrics (suitable for sparse multi-label)
+- **Example-Based Accuracy:** Sample-wise exact match (strict metric)
+- ❌ Removed: Subset Accuracy, Hamming Loss (misleading for ultra-sparse labels)
 
 ---
 
