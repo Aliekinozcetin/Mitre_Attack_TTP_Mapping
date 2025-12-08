@@ -69,28 +69,28 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
 
 def train_model(
     model,
-    train_dataset,
-    test_dataset,
-    output_dir: str = "./models",
-    batch_size: int = 16,
-    learning_rate: float = 2e-5,
+    train_dataloader=None,
+    train_dataset=None,
     num_epochs: int = 3,
+    learning_rate: float = 2e-5,
+    batch_size: int = 16,
     warmup_steps: int = 500,
-    device: str = 'cuda'
+    device: str = 'cuda',
+    output_dir: str = "./models"
 ) -> Dict:
     """
     Complete training pipeline.
     
     Args:
         model: Model to train
-        train_dataset: Training dataset
-        test_dataset: Test dataset
-        output_dir: Directory to save model
-        batch_size: Training batch size
-        learning_rate: Learning rate
+        train_dataloader: Training DataLoader (provide this OR train_dataset)
+        train_dataset: Training dataset (will create DataLoader if train_dataloader not provided)
         num_epochs: Number of training epochs
+        learning_rate: Learning rate
+        batch_size: Training batch size (only used if train_dataset provided)
         warmup_steps: Number of warmup steps
         device: Device to train on
+        output_dir: Directory to save model
         
     Returns:
         Dictionary with training history
@@ -98,12 +98,17 @@ def train_model(
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
     
-    # Create data loaders
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True
-    )
+    # Create data loader if not provided
+    if train_dataloader is None:
+        if train_dataset is None:
+            raise ValueError("Must provide either train_dataloader or train_dataset")
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            shuffle=True
+        )
+    else:
+        train_loader = train_dataloader
     
     # Set device
     if device == 'cuda' and not torch.cuda.is_available():
