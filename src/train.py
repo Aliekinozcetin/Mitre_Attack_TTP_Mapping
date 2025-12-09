@@ -28,13 +28,15 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
     model.train()
     total_loss = 0
     
-    # Colab-optimized progress bar
+    # Colab-optimized progress bar with proper formatting
     progress_bar = tqdm(
         dataloader, 
         desc="Training",
         position=0,
         leave=True,
-        ncols=100
+        ncols=120,
+        ascii=False,
+        colour='blue'
     )
     
     for batch in progress_bar:
@@ -67,13 +69,17 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
         
         total_loss += loss.item()
         
-        # Update progress bar (Colab-friendly)
-        progress_bar.set_postfix({'loss': f'{loss.item():.4f}'})
+        # Update progress bar with readable format
+        progress_bar.set_postfix({
+            'loss': f'{loss.item():.4f}',
+            'avg_loss': f'{total_loss/(progress_bar.n+1):.4f}'
+        })
     
-    # Close progress bar properly
+    # Close progress bar properly and print final stats
     progress_bar.close()
     
     avg_loss = total_loss / len(dataloader)
+    print(f"✅ Epoch completed - Avg Loss: {avg_loss:.4f}")
     return avg_loss
 
 
