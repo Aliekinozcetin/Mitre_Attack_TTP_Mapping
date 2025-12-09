@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import get_linear_schedule_with_warmup
-from tqdm import tqdm
+from tqdm.auto import tqdm  # Use tqdm.auto for better Colab support
 import os
 from typing import Dict
 
@@ -28,8 +28,15 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
     model.train()
     total_loss = 0
     
-    # Use leave=False to prevent multiple progress bars
-    progress_bar = tqdm(dataloader, desc="Training", leave=True, dynamic_ncols=True)
+    # Colab-optimized progress bar
+    progress_bar = tqdm(
+        dataloader, 
+        desc="Training",
+        position=0,
+        leave=True,
+        ncols=100,
+        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}, loss={postfix[0][loss]}]'
+    )
     
     for batch in progress_bar:
         # Move batch to device
@@ -61,8 +68,11 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
         
         total_loss += loss.item()
         
-        # Update progress bar with current loss
-        progress_bar.set_postfix({'loss': f'{loss.item():.4f}'}, refresh=True)
+        # Update progress bar (Colab-friendly)
+        progress_bar.set_postfix({'loss': f'{loss.item():.4f}'})
+    
+    # Close progress bar properly
+    progress_bar.close()
     
     avg_loss = total_loss / len(dataloader)
     return avg_loss
