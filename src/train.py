@@ -34,8 +34,7 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
         desc="Training",
         position=0,
         leave=True,
-        ncols=100,
-        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}, loss={postfix[0][loss]}]'
+        ncols=100
     )
     
     for batch in progress_bar:
