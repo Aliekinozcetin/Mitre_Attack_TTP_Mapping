@@ -185,12 +185,18 @@ def evaluate_model(
     else:
         test_loader = test_dataloader
     
+    # Calculate number of test samples
+    if test_dataset is not None:
+        num_samples = len(test_dataset)
+    else:
+        num_samples = len(test_loader.dataset)
+    
     print(f"\n{'='*50}")
     print(f"Starting evaluation:")
     print(f"  Device: {device}")
     print(f"  Batch size: {batch_size}")
     print(f"  Threshold: {threshold}")
-    print(f"  Test samples: {len(test_dataset)}")
+    print(f"  Test samples: {num_samples}")
     print(f"{'='*50}\n")
     
     # Get predictions
