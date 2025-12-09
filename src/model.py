@@ -11,6 +11,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoModel, AutoConfig
+import time
+from requests.exceptions import RequestException
 
 
 class FocalLoss(nn.Module):
@@ -97,11 +99,45 @@ class BERTForMultiLabelClassification(nn.Module):
         self.num_labels = num_labels
         self.use_focal_loss = use_focal_loss
         
-        # Load pretrained BERT
-        self.bert = AutoModel.from_pretrained(model_name)
+        # Load pretrained BERT with retry mechanism
+        max_retries = 3
+        retry_delay = 5
         
-        # Get hidden size from config
-        config = AutoConfig.from_pretrained(model_name)
+        for attempt in range(max_retries):
+            try:
+                print(f"Loading BERT model (attempt {attempt + 1}/{max_retries})...")
+                self.bert = AutoModel.from_pretrained(
+                    model_name,
+                    resume_download=True,  # Resume interrupted downloads
+                    force_download=False,  # Use cache if available
+                    local_files_only=False
+                )
+                print("✅ Model loaded successfully")
+                break
+            except (RequestException, OSError, Exception) as e:
+                if attempt < max_retries - 1:
+                    print(f"⚠️  Download failed: {str(e)[:100]}")
+                    print(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    print(f"❌ Failed to load model after {max_retries} attempts")
+                    raise
+        
+        # Get hidden size from config (also with retry)
+        for attempt in range(max_retries):
+            try:
+                config = AutoConfig.from_pretrained(
+                    model_name,
+                    resume_download=True,
+                    force_download=False
+                )
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                else:
+                    raise
         hidden_size = config.hidden_size
         
         # Classification head
@@ -176,8 +212,17 @@ def load_model(model_name: str, num_labels: int, device: str = 'cuda',
     Returns:
         Initialized model
     """
-    print(f"Loading model: {model_name}")
-    print(f"Number of labels: {num_labels}")
+    print(f"\n{'='*60}")
+    print(f"🔧 MODEL INITIALIZATION")
+    print(f"{'='*60}")
+    print(f"Model: {model_name}")
+    print(f"Labels: {num_labels}")
+    print(f"Device: {device}")
+    
+    # Set environment variables for better download performance
+    import os
+    os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
+    os.environ['TRANSFORMERS_VERBOSITY'] = 'info'
     
     # Move pos_weight to device if provided
     if pos_weight is not None and device == 'cuda' and torch.cuda.is_available():
