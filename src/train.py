@@ -28,7 +28,8 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
     model.train()
     total_loss = 0
     
-    progress_bar = tqdm(dataloader, desc="Training")
+    # Use leave=False to prevent multiple progress bars
+    progress_bar = tqdm(dataloader, desc="Training", leave=True, dynamic_ncols=True)
     
     for batch in progress_bar:
         # Move batch to device
@@ -60,8 +61,8 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
         
         total_loss += loss.item()
         
-        # Update progress bar
-        progress_bar.set_postfix({'loss': loss.item()})
+        # Update progress bar with current loss
+        progress_bar.set_postfix({'loss': f'{loss.item():.4f}'}, refresh=True)
     
     avg_loss = total_loss / len(dataloader)
     return avg_loss
