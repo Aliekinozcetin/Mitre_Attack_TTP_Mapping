@@ -6,9 +6,15 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import get_linear_schedule_with_warmup
-from tqdm.auto import tqdm  # Use tqdm.auto for better Colab support
 import os
 from typing import Dict
+import sys
+
+# Import tqdm based on environment
+try:
+    from tqdm.notebook import tqdm  # Jupyter/Colab notebook
+except ImportError:
+    from tqdm import tqdm  # Terminal/standard
 
 
 def train_epoch(model, dataloader, optimizer, scheduler, device):
@@ -27,19 +33,17 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
     """
     model.train()
     total_loss = 0
+    num_batches = len(dataloader)
     
-    # Colab-optimized progress bar with proper formatting
+    # Simple progress bar that works in Colab
     progress_bar = tqdm(
-        dataloader, 
+        dataloader,
         desc="Training",
-        position=0,
-        leave=True,
-        ncols=120,
-        ascii=False,
-        colour='blue'
+        total=num_batches,
+        bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]'
     )
     
-    for batch in progress_bar:
+    for batch_idx, batch in enumerate(progress_bar):
         # Move batch to device
         input_ids = batch['input_ids'].to(device)
         attention_mask = batch['attention_mask'].to(device)
@@ -68,18 +72,19 @@ def train_epoch(model, dataloader, optimizer, scheduler, device):
         scheduler.step()
         
         total_loss += loss.item()
+        current_loss = loss.item()
+        avg_loss_so_far = total_loss / (batch_idx + 1)
         
-        # Update progress bar with readable format
-        progress_bar.set_postfix({
-            'loss': f'{loss.item():.4f}',
-            'avg_loss': f'{total_loss/(progress_bar.n+1):.4f}'
-        })
+        # Update progress bar description with metrics
+        progress_bar.set_description(
+            f"Training [loss={current_loss:.4f}, avg={avg_loss_so_far:.4f}]"
+        )
     
-    # Close progress bar properly and print final stats
+    # Close and print summary
     progress_bar.close()
+    avg_loss = total_loss / num_batches
+    print(f"✅ Average Loss: {avg_loss:.4f}\n")
     
-    avg_loss = total_loss / len(dataloader)
-    print(f"✅ Epoch completed - Avg Loss: {avg_loss:.4f}")
     return avg_loss
 
 
