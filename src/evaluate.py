@@ -138,22 +138,26 @@ def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.
 
 def evaluate_model(
     model,
-    test_dataset,
+    test_dataset=None,
+    test_dataloader=None,
     batch_size: int = 16,
     device: str = 'cuda',
     threshold: float = 0.5,
-    label_list: list = None
+    label_list: list = None,
+    label_names: list = None  # Alias for label_list
 ) -> Dict:
     """
     Complete evaluation pipeline.
     
     Args:
         model: Trained model
-        test_dataset: Test dataset
-        batch_size: Batch size for evaluation
+        test_dataset: Test dataset (provide this OR test_dataloader)
+        test_dataloader: Test DataLoader (provide this OR test_dataset)
+        batch_size: Batch size for evaluation (only used if test_dataset provided)
         device: Device to run on
         threshold: Classification threshold
         label_list: List of label names (optional)
+        label_names: Alias for label_list (optional)
         
     Returns:
         Dictionary of evaluation metrics
@@ -165,12 +169,21 @@ def evaluate_model(
     
     model = model.to(device)
     
-    # Create data loader
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False
-    )
+    # Handle label_names alias
+    if label_names is not None and label_list is None:
+        label_list = label_names
+    
+    # Create data loader if not provided
+    if test_dataloader is None:
+        if test_dataset is None:
+            raise ValueError("Must provide either test_dataset or test_dataloader")
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=batch_size,
+            shuffle=False
+        )
+    else:
+        test_loader = test_dataloader
     
     print(f"\n{'='*50}")
     print(f"Starting evaluation:")
