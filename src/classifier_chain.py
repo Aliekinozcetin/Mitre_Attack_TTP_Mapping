@@ -58,7 +58,8 @@ class BERTClassifierChain:
                 max_depth=10,
                 random_state=random_state,
                 class_weight='balanced',
-                n_jobs=-1
+                n_jobs=-1,
+                verbose=1  # Show training progress
             )
         elif base_estimator == 'extra_trees':
             self.base_clf = ExtraTreesClassifier(
@@ -67,7 +68,8 @@ class BERTClassifierChain:
                 random_state=random_state,
                 class_weight='balanced',
                 n_jobs=-1,
-                bootstrap=False  # ExtraTrees default
+                bootstrap=False,  # ExtraTrees default
+                verbose=1  # Show training progress
             )
         else:
             raise ValueError(f"Unknown base_estimator: {base_estimator}")
@@ -385,7 +387,8 @@ class BERTMultiOutputClassifier:
                 max_depth=10,
                 random_state=random_state,
                 class_weight='balanced',
-                n_jobs=-1
+                n_jobs=-1,
+                verbose=1  # Show training progress
             )
         elif base_estimator == 'extra_trees':
             self.base_clf = ExtraTreesClassifier(
@@ -394,7 +397,8 @@ class BERTMultiOutputClassifier:
                 random_state=random_state,
                 class_weight='balanced',
                 n_jobs=-1,
-                bootstrap=False  # ExtraTrees default
+                bootstrap=False,  # ExtraTrees default
+                verbose=1  # Show training progress
             )
         else:
             raise ValueError(f"Unknown base_estimator: {base_estimator}")
