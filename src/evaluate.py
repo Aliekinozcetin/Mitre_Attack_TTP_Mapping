@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import (
     f1_score,
     precision_score,
-    recall_score
+    recall_score,
+    hamming_loss
 )
 import numpy as np
 from tqdm import tqdm
@@ -118,6 +119,10 @@ def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.
     p5, r5 = calculate_at_k(probs, labels, k=5)
     p10, r10 = calculate_at_k(probs, labels, k=10)
     
+    # Hamming Loss: fraction of labels that are incorrectly predicted
+    # Lower is better (0 = perfect, 1 = all wrong)
+    hamming = hamming_loss(labels, predictions)
+    
     # Example-based accuracy (sample-wise exact match)
     # For each example, check if all predicted labels match all true labels
     example_based_accuracy = np.mean(np.all(predictions == labels, axis=1))
@@ -130,6 +135,7 @@ def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.
         'recall_at_5': r5,
         'precision_at_10': p10,
         'recall_at_10': r10,
+        'hamming_loss': hamming,
         'example_based_accuracy': example_based_accuracy
     }
     
@@ -221,7 +227,8 @@ def evaluate_model(
     print(f"  Precision@10:{metrics['precision_at_10']:.4f}")
     
     print(f"\nExample-based metrics:")
-    print(f"  Accuracy: {metrics['example_based_accuracy']:.4f}")
+    print(f"  Hamming Loss: {metrics['hamming_loss']:.4f}")
+    print(f"  Accuracy:     {metrics['example_based_accuracy']:.4f}")
     print("="*50 + "\n")
     
     # Add predictions and labels to metrics
