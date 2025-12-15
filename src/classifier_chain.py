@@ -54,8 +54,10 @@ class BERTClassifierChain:
             )
         elif base_estimator == 'random_forest':
             self.base_clf = RandomForestClassifier(
-                n_estimators=100,
+                n_estimators=50,  # Reduced from 100 for faster training
                 max_depth=10,
+                max_features='sqrt',  # Use sqrt(768)≈28 features per split
+                min_samples_split=20,  # Faster splits
                 random_state=random_state,
                 class_weight='balanced',
                 n_jobs=-1,
@@ -63,8 +65,10 @@ class BERTClassifierChain:
             )
         elif base_estimator == 'extra_trees':
             self.base_clf = ExtraTreesClassifier(
-                n_estimators=100,
+                n_estimators=50,  # Reduced from 100 for faster training
                 max_depth=10,
+                max_features='sqrt',  # Use sqrt(768)≈28 features per split
+                min_samples_split=20,  # Faster splits
                 random_state=random_state,
                 class_weight='balanced',
                 n_jobs=-1,
