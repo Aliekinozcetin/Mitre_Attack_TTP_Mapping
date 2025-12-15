@@ -138,8 +138,21 @@ def train_model(
     
     model = model.to(device)
     
-    # Prepare optimizer and scheduler
-    optimizer = AdamW(model.parameters(), lr=learning_rate)
+    # Prepare optimizer with differential learning rates
+    # BERT encoder: lower LR (preserve domain knowledge)
+    # Classification head: higher LR (faster convergence)
+    optimizer = AdamW([
+        {
+            'params': model.bert.parameters(),
+            'lr': learning_rate,  # 2e-5 for BERT
+            'weight_decay': 0.01
+        },
+        {
+            'params': model.classifier.parameters(),
+            'lr': learning_rate * 5,  # 1e-4 for classifier head
+            'weight_decay': 0.0
+        }
+    ])
     
     total_steps = len(train_loader) * num_epochs
     scheduler = get_linear_schedule_with_warmup(

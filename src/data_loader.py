@@ -19,6 +19,143 @@ from typing import Dict, Tuple, List
 import torch
 from torch.utils.data import Dataset, DataLoader
 import ast
+import re
+
+
+def normalize_cti_text(text: str) -> str:
+    """
+    Normalize defanged indicators in CTI text for consistent tokenization.
+    
+    Converts defanged IOCs (Indicators of Compromise) to standard tokens:
+    - IP addresses: 1.2.3[.]4 → <IP_ADDR>
+    - URLs: hxxp://evil[.]com → <URL>
+    - Domains: evil[.]com → <DOMAIN>
+    - File hashes: MD5/SHA256 → <MD5>/<SHA256>
+    
+    Args:
+        text: Raw CTI text with potentially defanged indicators
+        
+    Returns:
+        Normalized text with standardized tokens
+    """
+    if not isinstance(text, str):
+        return text
+    
+    # IP addresses (defanged): 1.2.3[.]4 or 1[.]2[.]3[.]4
+    text = re.sub(
+        r'\b\d{1,3}\[\.\]\d{1,3}\[\.\]\d{1,3}\[\.\]\d{1,3}\b',
+        '<IP_ADDR>',
+        text
+    )
+    text = re.sub(
+        r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
+        '<IP_ADDR>',
+        text
+    )
+    
+    # URLs (defanged): hxxp://, hxxps://, http[:]//
+    text = re.sub(r'hxxps?://[^\s]+', '<URL>', text)
+    text = re.sub(r'https?[\[\(]?:[\]\)]?//[^\s]+', '<URL>', text)
+    
+    # Domains (defanged): evil[.]com, evil(.)com
+    text = re.sub(r'\b[\w\-]+\[\.\][\w\-\.]+\b', '<DOMAIN>', text)
+    text = re.sub(r'\b[\w\-]+\(\.\)[\w\-\.]+\b', '<DOMAIN>', text)
+    
+    # Email addresses (defanged): user[@]domain[.]com
+    text = re.sub(r'\b[\w\.\-]+\[@\][\w\.\-]+\b', '<EMAIL>', text)
+    
+    # File hashes
+    # MD5: 32 hex characters
+    text = re.sub(r'\b[a-fA-F0-9]{32}\b', '<MD5>', text)
+    # SHA1: 40 hex characters
+    text = re.sub(r'\b[a-fA-F0-9]{40}\b', '<SHA1>', text)
+    # SHA256: 64 hex characters
+    text = re.sub(r'\b[a-fA-F0-9]{64}\b', '<SHA256>', text)
+    
+    # File paths
+    text = re.sub(r'[A-Z]:\\[^\s]+', '<FILE_PATH>', text)  # Windows
+    text = re.sub(r'/[\w/\-\.]+/[\w\-\.]+', '<FILE_PATH>', text)  # Unix/Linux
+    
+    return text
+
+
+def sliding_window_tokenize(
+    text: str,
+    tokenizer,
+    max_length: int = 512,
+    stride: int = 128,
+    aggregate: str = 'max'
+):
+    """
+    Tokenize long texts using sliding window approach.
+    
+    For texts longer than max_length, creates overlapping windows
+    and aggregates predictions. Based on paper's methodology for
+    handling long CTI reports.
+    
+    Args:
+        text: Input text to tokenize
+        tokenizer: HuggingFace tokenizer
+        max_length: Maximum sequence length (default: 512)
+        stride: Overlap between windows (default: 128)
+        aggregate: How to combine multi-window predictions ('max', 'mean', 'vote')
+    
+    Returns:
+        Dictionary with tokenization and window metadata
+    """
+    # Initial tokenization to check length
+    tokens = tokenizer.tokenize(text)
+    
+    # If text fits in single window, use standard tokenization
+    if len(tokens) <= max_length - 2:  # -2 for [CLS] and [SEP]
+        encoding = tokenizer(
+            text,
+            truncation=True,
+            padding='max_length',
+            max_length=max_length,
+            return_tensors=None
+        )
+        encoding['num_windows'] = 1
+        encoding['aggregate_method'] = aggregate
+        return encoding
+    
+    # Create sliding windows for long texts
+    windows = []
+    window_positions = []
+    
+    start_idx = 0
+    while start_idx < len(tokens):
+        end_idx = min(start_idx + max_length - 2, len(tokens))
+        window_tokens = tokens[start_idx:end_idx]
+        
+        # Convert tokens back to text
+        window_text = tokenizer.convert_tokens_to_string(window_tokens)
+        
+        # Encode window
+        window_encoding = tokenizer(
+            window_text,
+            truncation=True,
+            padding='max_length',
+            max_length=max_length,
+            return_tensors=None
+        )
+        
+        windows.append(window_encoding)
+        window_positions.append((start_idx, end_idx))
+        
+        # Move to next window
+        if end_idx >= len(tokens):
+            break
+        start_idx += (max_length - stride - 2)
+    
+    # For now, return first window (single prediction per sample)
+    # Multi-window aggregation would require model architecture changes
+    result = windows[0]
+    result['num_windows'] = len(windows)
+    result['aggregate_method'] = aggregate
+    result['window_positions'] = window_positions
+    
+    return result
 
 
 class CTIDataset(Dataset):
@@ -337,10 +474,15 @@ def prepare_data(
     print(f"\n🔤 Loading tokenizer: {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
+    # Normalize CTI text (defanged indicators)
+    print("🔧 Normalizing defanged indicators...")
+    train_texts = [normalize_cti_text(text) for text in train_df['text'].fillna('').tolist()]
+    test_texts = [normalize_cti_text(text) for text in test_df['text'].fillna('').tolist()]
+    
     # Tokenize texts
     print("⚙️  Tokenizing texts...")
     train_encodings = tokenizer(
-        train_df['text'].fillna('').tolist(),
+        train_texts,
         truncation=True,
         padding=True,
         max_length=max_length,
@@ -348,7 +490,7 @@ def prepare_data(
     )
     
     test_encodings = tokenizer(
-        test_df['text'].fillna('').tolist(),
+        test_texts,
         truncation=True,
         padding=True,
         max_length=max_length,

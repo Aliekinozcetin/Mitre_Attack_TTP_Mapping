@@ -8,30 +8,104 @@ Multi-label classification system using **CTI-BERT** (IBM Research) to tag Tacti
 - Domain-specific BERT pre-trained on Cyber Threat Intelligence data
 - Superior performance on security-related text understanding
 - Optimized for MITRE ATT&CK technique recognition
+- **Differential Learning Rate**: BERT encoder (2e-5) + Classifier head (1e-4)
 - Reference: https://huggingface.co/ibm-research/CTI-BERT
 
 ## 🎯 Dataset
 
-**Hybrid Dataset (Default)** - Combines 3 sources for improved quality:
-- **tumeteor/Security-TTP-Mapping** (14,936 samples) - CTI reports
-- **sarahwei/cyber_MITRE_attack...** (654 samples) - MITRE Q&A
-- **Zainabsa99/mitre_attack** (508 samples) - Technique descriptions
-- **Total:** ~16,098 samples
-- **Labels:** MITRE ATT&CK techniques (T-codes)
-- **Advantage:** Better label distribution, reduced class imbalance
+**Security-TTP-Mapping** (`tumeteor/Security-TTP-Mapping`)
+- **Train:** 14,936 samples
+- **Test:** 2,638 samples  
+- **Labels:** 499 MITRE ATT&CK techniques (multi-label)
+- **Challenge:** Severe class imbalance (1:458 positive-to-negative ratio)
+
+## 🔬 Advanced CTI Preprocessing
+
+### 1. Defanged Indicator Normalization
+Standardizes obfuscated cyber threat indicators before tokenization:
+
+```python
+# IP Addresses
+"192.168.1[.]1" → "<IP_ADDR>"
+"10[.]0[.]0[.]1" → "<IP_ADDR>"
+
+# URLs
+"hxxp://evil[.]com/malware" → "<URL>"
+"https[:]//phishing.com" → "<URL>"
+
+# Domains
+"evil[.]com" → "<DOMAIN>"
+"malicious[.]org" → "<DOMAIN>"
+
+# Hashes
+"5d41402abc4b2a76b9719d911017c592" → "<MD5>"
+"aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d" → "<SHA1>"
+"2c26b46b68ffc68ff99b453c1d30413413422d706..." → "<SHA256>"
+
+# Emails
+"attacker[@]evil.com" → "<EMAIL>"
+
+# File Paths
+"C:\\Windows\\malware.exe" → "<FILE_PATH>"
+"/usr/bin/backdoor" → "<FILE_PATH>"
+```
+
+**Benefits:**
+- Reduces vocabulary noise from indicator variations
+- Improves model generalization across different reports
+- Preserves semantic meaning while standardizing format
+
+### 2. Sliding Window Tokenization
+Handles long CTI reports exceeding 512 token limit:
+
+```python
+# Configuration
+Max Length: 512 tokens
+Stride (Overlap): 128 tokens
+Aggregation: First window (extendable to max/mean/vote)
+
+# Example: 1000-token report
+Window 1: tokens [0:512]    (used for prediction)
+Window 2: tokens [384:896]  (128 overlap with W1)
+Window 3: tokens [768:1000] (128 overlap with W2)
+```
+
+**Benefits:**
+- No information loss from truncation
+- Overlapping windows preserve context boundaries
+- Extendable to multi-window prediction aggregation
+
+### 3. Differential Learning Rate
+Optimizes BERT encoder and classification head separately:
+
+```python
+BERT Encoder:
+- Learning Rate: 2e-5
+- Weight Decay: 0.01
+- Strategy: Slow fine-tuning preserves pretrained CTI knowledge
+
+Classification Head:
+- Learning Rate: 1e-4 (5× faster)
+- Weight Decay: 0.0
+- Strategy: Fast convergence on task-specific patterns
+```
+
+**Benefits:**
+- Preserves CTI-BERT's domain expertise
+- Accelerates task-specific layer adaptation
+- Prevents catastrophic forgetting of pretrained knowledge
 
 ## 📁 Structure
 
 ```
-├── run_strategy_test.ipynb  # Modular strategy testing notebook (CTI-BERT)
-├── src/                      # Source code
-│   ├── data_loader.py       # Dataset loading & preprocessing (CTI-BERT tokenizer)
-│   ├── model.py             # CTI-BERT model with Focal Loss support
-│   ├── train.py             # Training loop
-│   ├── evaluate.py          # Evaluation metrics
-│   └── strategies.py        # Class imbalance strategies
-├── data/                     # Dataset cache
-├── outputs/                  # Training results
+├── run_strategy_test.ipynb  # Hybrid strategy testing (4 losses × 4 classifiers)
+├── src/
+│   ├── data_loader.py       # CTI preprocessing + sliding windows
+│   ├── model.py             # CTI-BERT with Focal/Weighted BCE
+│   ├── train.py             # Differential LR training loop
+│   ├── evaluate.py          # Multi-label metrics
+│   └── classifier_chain.py  # Sklearn-based meta-classifiers
+├── outputs/                  # Training checkpoints & results
 └── requirements.txt
 ```
 
@@ -39,43 +113,69 @@ Multi-label classification system using **CTI-BERT** (IBM Research) to tag Tacti
 
 ### Google Colab (Recommended)
 
-1. Upload `run_strategy_test.ipynb` to Colab
-2. Set Runtime to GPU (T4)
-3. Run setup cells (1-4)
-4. Test strategies one by one
+1. Upload `run_training.ipynb` to Colab
+2. Set Runtime to **GPU (T4 or better)**
+3. Run all cells to test 22 strategies
 
 ### Local
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# Open notebook
-jupyter notebook run_strategy_test.ipynb
+jupyter notebook run_training.ipynb
 ```
 
-## 🧪 Class Imbalance Strategies
+## 🧪 Hybrid Strategy Experiments (22 Strategies)
 
-The project implements 5 different strategies to handle severe class imbalance (1:458 ratio):
+Testing **4 Loss Functions × 4 Classification Methods + 6 Individual Strategies**:
 
+### Loss Functions
 1. **Baseline BCE** - Standard Binary Cross-Entropy
-2. **Weighted BCE** - Frequency-based per-label weighting (most promising)
-3. **Focal Loss (γ=2)** - Moderate focusing on hard examples
-4. **Focal Loss (γ=5)** - Strong focusing on hard examples
-5. **Top-100 Subset** - Train on 100 most frequent labels
+2. **Weighted BCE** - Per-label frequency-based weights (1:458 ratio compensation)
+3. **Focal Loss (γ=2)** - Moderate hard example focus
+4. **Focal Loss (γ=5)** - Strong hard example focus
 
-## 📊 Results
+### Classification Methods
+1. **ClassifierChain** - Models label dependencies sequentially
+2. **MultiOutputClassifier** - Independent per-label classifiers
+3. **RandomForestClassifier** - Ensemble decision trees
+4. **ExtraTreesClassifier** - Randomized ensemble trees
 
-Results are saved to `outputs/strategy_comparison_[timestamp]/`:
-- `strategy_comparison_[timestamp].json` - All strategy results
-- `strategy_comparison_[timestamp].csv` - Comparison table
-- **Metrics:** Micro F1, Recall@5, Precision@5, Recall@10, Precision@10, Example-Based Accuracy
+### Individual Strategies (1-6)
+- Strategy 1-4: Loss functions with standard classifier
+- Strategy 5-6: Sklearn tree ensembles only
 
-### Why These Metrics?
-- **Micro F1:** Overall performance across all labels
-- **Recall@K / Precision@K:** Ranking-based metrics (suitable for sparse multi-label)
-- **Example-Based Accuracy:** Sample-wise exact match (strict metric)
-- ❌ Removed: Subset Accuracy, Hamming Loss (misleading for ultra-sparse labels)
+### Hybrid Strategies (7-22)
+- **Strategy 7-10:** Baseline BCE × 4 classifiers
+- **Strategy 11-14:** Weighted BCE × 4 classifiers
+- **Strategy 15-18:** Focal γ=2 × 4 classifiers
+- **Strategy 19-22:** Focal γ=5 × 4 classifiers
+
+## 📊 Evaluation Metrics
+
+- **Micro-F1:** Overall performance (main metric)
+- **Macro-F1:** Per-class average (imbalance indicator)
+- **Example-Based Accuracy:** Exact match per sample
+- **Recall@5/10:** Top-K retrieval accuracy
+- **Precision@5/10:** Top-K prediction quality
+
+Results saved to `outputs/bert-base-uncased_[timestamp]/`:
+- `final_model.pt` - Best checkpoint
+- `evaluation_metrics.json` - All metrics
+- `training_history.json` - Loss/accuracy curves
+- `summary.json` - Configuration + results
+
+## 🔧 Implementation Notes
+
+### Why These Features?
+Based on state-of-the-art CTI classification research:
+1. **Differential LR**: Prevents CTI-BERT overfitting while enabling fast task adaptation
+2. **Defanged Normalization**: Addresses real-world CTI report obfuscation practices
+3. **Sliding Windows**: Handles variable-length threat intelligence documents
+
+### Known Limitations
+- Sliding windows currently use first window only (single prediction)
+- Multi-window aggregation requires architecture changes
+- Normalization regex may miss novel obfuscation patterns
 
 ---
 
