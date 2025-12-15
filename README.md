@@ -152,15 +152,25 @@ Testing **4 Loss Functions × 4 Classification Methods + 6 Individual Strategies
 
 ## 📊 Evaluation Metrics
 
+### Core Metrics
 - **Micro-F1:** Overall performance (main metric)
 - **Macro-F1:** Per-class average (imbalance indicator)
-- **Example-Based Accuracy:** Exact match per sample
-- **Recall@5/10:** Top-K retrieval accuracy
-- **Precision@5/10:** Top-K prediction quality
+- **Example-Based Accuracy (Subset Accuracy):** Exact match per sample
+
+### Ranking Metrics (SOC Analyst Perspective)
+- **mAP (Mean Average Precision):** Measures ranking quality - rewards models that place correct TTPs at the top of the prediction list. Critical for SOC analysts who review top predictions.
+- **Recall@5/10:** How many true TTPs appear in top-K predictions
+- **Precision@5/10:** What fraction of top-K predictions are correct
+
+### Why These Metrics?
+This is effectively a **recommendation system for SOC analysts**:
+- **mAP** evaluates the entire ranking (better than Recall@K alone)
+- **Recall@5** matters because analysts typically review top 5-10 predictions
+- **Subset Accuracy** is strict but shows perfect classification capability
 
 Results saved to `outputs/bert-base-uncased_[timestamp]/`:
 - `final_model.pt` - Best checkpoint
-- `evaluation_metrics.json` - All metrics
+- `evaluation_metrics.json` - All metrics (including mAP)
 - `training_history.json` - Loss/accuracy curves
 - `summary.json` - Configuration + results
 

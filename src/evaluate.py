@@ -57,6 +57,52 @@ def predict(model, dataloader, device) -> Tuple[np.ndarray, np.ndarray]:
     return all_probs, all_labels
 
 
+def calculate_mean_average_precision(probs: np.ndarray, labels: np.ndarray) -> float:
+    """
+    Calculate Mean Average Precision (mAP) for multi-label classification.
+    
+    mAP rewards models that rank correct TTPs at the top of the prediction list.
+    For each sample, it calculates Average Precision (area under precision-recall curve),
+    then averages across all samples.
+    
+    Args:
+        probs: Prediction probabilities (n_samples, n_labels)
+        labels: True binary labels (n_samples, n_labels)
+        
+    Returns:
+        Mean Average Precision score
+    """
+    average_precisions = []
+    
+    for i in range(len(labels)):
+        true_labels = np.where(labels[i] == 1)[0]
+        
+        # Skip samples with no positive labels
+        if len(true_labels) == 0:
+            continue
+        
+        # Get predicted ranking (sorted by probability, descending)
+        ranking = np.argsort(probs[i])[::-1]
+        
+        # Calculate precision at each relevant position
+        precisions_at_k = []
+        num_hits = 0
+        
+        for k, pred_label in enumerate(ranking, start=1):
+            if pred_label in true_labels:
+                num_hits += 1
+                precision_at_k = num_hits / k
+                precisions_at_k.append(precision_at_k)
+        
+        # Average Precision for this sample
+        if len(precisions_at_k) > 0:
+            ap = np.mean(precisions_at_k)
+            average_precisions.append(ap)
+    
+    # Mean Average Precision across all samples
+    return np.mean(average_precisions) if len(average_precisions) > 0 else 0.0
+
+
 def calculate_at_k(probs: np.ndarray, labels: np.ndarray, k: int = 5) -> Tuple[float, float]:
     """
     Calculate Precision@K and Recall@K for multi-label classification.
@@ -119,6 +165,10 @@ def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.
     p5, r5 = calculate_at_k(probs, labels, k=5)
     p10, r10 = calculate_at_k(probs, labels, k=10)
     
+    # Calculate mAP (Mean Average Precision)
+    # This measures ranking quality - how well correct TTPs are ranked at the top
+    mean_ap = calculate_mean_average_precision(probs, labels)
+    
     # Hamming Loss: fraction of labels that are incorrectly predicted
     # Lower is better (0 = perfect, 1 = all wrong)
     hamming = hamming_loss(labels, predictions)
@@ -135,6 +185,7 @@ def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.
         'recall_at_5': r5,
         'precision_at_10': p10,
         'recall_at_10': r10,
+        'mean_average_precision': mean_ap,
         'hamming_loss': hamming,
         'example_based_accuracy': example_based_accuracy
     }
@@ -221,6 +272,7 @@ def evaluate_model(
     print(f"  Recall:    {metrics['micro_recall']:.4f}")
     
     print(f"\nRanking-based metrics:")
+    print(f"  mAP (Mean Avg Precision): {metrics['mean_average_precision']:.4f}")
     print(f"  Recall@5:    {metrics['recall_at_5']:.4f}")
     print(f"  Precision@5: {metrics['precision_at_5']:.4f}")
     print(f"  Recall@10:   {metrics['recall_at_10']:.4f}")
