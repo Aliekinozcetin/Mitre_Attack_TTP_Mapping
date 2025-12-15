@@ -72,14 +72,25 @@ class BERTClassifierChain:
         else:
             raise ValueError(f"Unknown base_estimator: {base_estimator}")
         
-        # Create ClassifierChain
-        self.chain = ClassifierChain(
-            estimator=self.base_clf,
-            order=order,
-            cv=cv,
-            random_state=random_state,
-            verbose=True
-        )
+        # Create ClassifierChain (backward compatible with sklearn versions)
+        try:
+            # Try new parameter name (sklearn >= 1.2)
+            self.chain = ClassifierChain(
+                estimator=self.base_clf,
+                order=order,
+                cv=cv,
+                random_state=random_state,
+                verbose=True
+            )
+        except TypeError:
+            # Fall back to old parameter name (sklearn < 1.2)
+            self.chain = ClassifierChain(
+                base_estimator=self.base_clf,
+                order=order,
+                cv=cv,
+                random_state=random_state,
+                verbose=True
+            )
         
         self.is_fitted = False
     
