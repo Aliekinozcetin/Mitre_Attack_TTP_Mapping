@@ -113,18 +113,87 @@ Classification Head:
 
 ### Google Colab (Recommended)
 
-1. Upload `run_training.ipynb` to Colab
+1. Upload `run_strategy_test.ipynb` to Colab
 2. Set Runtime to **GPU (T4 or better)**
-3. Run all cells to test 22 strategies
+3. **Follow the recommended execution order below**
 
 ### Local
 
 ```bash
 pip install -r requirements.txt
-jupyter notebook run_training.ipynb
+jupyter notebook run_strategy_test.ipynb
 ```
 
-## 🧪 Hybrid Strategy Experiments (22 Strategies)
+## 🔬 Experiment Structure (Recommended Execution Order)
+
+### **PART A: Data Augmentation (Run First!)**
+Test augmentation strategies to improve data quality, especially for rare TTPs:
+
+**Strategies A-1 to A-4:**
+1. **AUG-1: Baseline** - No augmentation (reference)
+2. **AUG-2: IoC Replacement** - Randomize indicators (IP, hash, domain) to prevent overfitting
+3. **AUG-3: Back-translation** - Paraphrase via EN→DE→EN for semantic variety
+4. **AUG-4: Combined** - All three methods together
+
+**Expected Improvements:**
+- Tail TTP Recall: +40-60%
+- mAP (ranking): +20-30%
+- Micro F1: +30-50%
+
+---
+
+### **PART B: Loss Function Strategies (Run with Best Augmentation)**
+Test different loss functions using the best augmentation from PART A:
+
+**Strategies B-1 to B-4:**
+1. **Baseline BCE** - Standard Binary Cross-Entropy
+2. **Weighted BCE** - Frequency-based weights (compensates 1:458 imbalance)
+3. **Focal Loss (γ=2)** - Moderate hard example focus
+4. **Focal Loss (γ=5)** - Strong hard example focus
+
+**Use Case:** Find the best loss function for imbalanced multi-label classification
+
+---
+
+### **PART C: Multi-label Classification Techniques (Final Optimization)**
+Test advanced classifiers using best augmentation + best loss:
+
+**Hybrid Strategies (16 combinations):**
+- 4 Loss Functions × 4 Classification Methods
+
+**Classification Methods:**
+1. **ClassifierChain** - Models label dependencies sequentially
+2. **MultiOutputClassifier** - Independent per-label classifiers  
+3. **RandomForestClassifier** - Ensemble decision trees
+4. **ExtraTreesClassifier** - Randomized ensemble trees (faster)
+
+**Total:** 16 hybrid strategies testing all combinations
+
+---
+
+## 📊 Why This Order?
+
+```
+PART A (Augmentation)
+   ↓ Select best method (e.g., AUG-4 Combined)
+   ↓
+PART B (Loss Functions)  
+   ↓ Use AUG-4 data, find best loss (e.g., Weighted BCE)
+   ↓
+PART C (Classifiers)
+   ↓ Use AUG-4 + Weighted BCE, test 16 hybrids
+   ↓
+Final Best: AUG-4 + Weighted BCE + ClassifierChain
+```
+
+**Benefits:**
+- **Scientific:** Each stage builds on previous optimization
+- **Efficient:** Reuse best augmentation across all strategies
+- **Clear:** Easy to identify which component contributed to improvement
+
+---
+
+## 🧪 Hybrid Strategy Experiments (22 Total Strategies)
 
 Testing **4 Loss Functions × 4 Classification Methods + 6 Individual Strategies**:
 
