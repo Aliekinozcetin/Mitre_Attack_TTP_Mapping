@@ -159,40 +159,41 @@ class BERTClassifierChain:
         print(f"   Chain order: {self.chain.order}")
         print(f"   CV folds: {self.chain.cv}")
         
-        # Temporarily disable verbose for ClassifierChain to avoid 499 lines of output
-        # We'll show our own progress bar instead
-        original_verbose = self.chain.verbose
+        # Disable verbose to avoid 499 lines of output
         self.chain.verbose = False
         
-        # Create custom progress bar for chain fitting
+        # Fit with simple progress indication
+        import time
         num_labels = Y_train.shape[1]
-        print(f"   Training chain with {num_labels} labels...")
-        with tqdm(total=num_labels, desc="   Fitting chain", unit="label", ncols=80) as pbar:
-            # Monkey-patch the chain to update progress
-            original_fit = type(self.chain).fit
-            
-            def fit_with_progress(chain_self, X, Y):
-                # Store original _fit_estimator method
-                from sklearn.multioutput import ClassifierChain as CC
-                original_fit_estimator = CC._fit_estimator
-                
-                def _fit_estimator_with_progress(chain_self_inner, estimator, X, y, k):
-                    result = original_fit_estimator(chain_self_inner, estimator, X, y, k)
-                    pbar.update(1)
-                    return result
-                
-                # Temporarily replace _fit_estimator
-                CC._fit_estimator = _fit_estimator_with_progress
-                try:
-                    result = original_fit(chain_self, X, Y)
-                finally:
-                    CC._fit_estimator = original_fit_estimator
-                return result
-            
-            fit_with_progress(self.chain, X_train, Y_train)
+        print(f"   Training chain with {num_labels} labels (this may take several minutes)...")
         
-        # Restore verbose setting
-        self.chain.verbose = original_verbose
+        start_time = time.time()
+        with tqdm(total=100, desc="   Fitting chain", bar_format='{l_bar}{bar}| {elapsed}', ncols=80) as pbar:
+            # Update progress bar periodically in background
+            import threading
+            
+            fitting_done = threading.Event()
+            
+            def update_progress():
+                while not fitting_done.is_set():
+                    time.sleep(0.5)
+                    if not fitting_done.is_set():
+                        # Update progress bar (we don't know actual progress, so just show activity)
+                        if pbar.n < 99:
+                            pbar.update(1)
+            
+            progress_thread = threading.Thread(target=update_progress, daemon=True)
+            progress_thread.start()
+            
+            # Fit the chain
+            self.chain.fit(X_train, Y_train)
+            
+            # Signal completion
+            fitting_done.set()
+            pbar.update(100 - pbar.n)  # Complete the bar
+        
+        elapsed = time.time() - start_time
+        print(f"   ✓ Chain fitting completed in {elapsed:.1f}s ({elapsed/num_labels:.2f}s per label)")
         
         self.is_fitted = True
         print("\n✅ Classifier Chain training complete!")
