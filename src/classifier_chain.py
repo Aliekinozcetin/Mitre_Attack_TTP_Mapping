@@ -426,7 +426,7 @@ class BERTMultiOutputClassifier:
                 random_state=random_state,
                 class_weight='balanced',
                 n_jobs=-1,
-                verbose=1  # Show training progress
+                verbose=0  # Silence output, we'll use progress bar instead
             )
         elif base_estimator == 'extra_trees':
             self.base_clf = ExtraTreesClassifier(
@@ -436,7 +436,7 @@ class BERTMultiOutputClassifier:
                 class_weight='balanced',
                 n_jobs=-1,
                 bootstrap=False,  # ExtraTrees default
-                verbose=1  # Show training progress
+                verbose=0  # Silence output, we'll use progress bar instead
             )
         else:
             raise ValueError(f"Unknown base_estimator: {base_estimator}")
@@ -506,12 +506,39 @@ class BERTMultiOutputClassifier:
         print("\n🔀 Step 2: Fitting Multi-Output Classifier...")
         print(f"   Base estimator: {type(self.base_clf).__name__}")
         print(f"   Parallel jobs: {self.multi_output.n_jobs}")
-        print(f"   Training: {Y_train.shape[1]} independent binary classifiers")
+        print(f"   Training: {Y_train.shape[1]} independent binary classifiers in parallel")
         
-        self.multi_output.fit(X_train, Y_train)
+        # Create progress bar with indeterminate mode (since we can't track parallel jobs easily)
+        num_outputs = Y_train.shape[1]
+        pbar = tqdm(total=num_outputs, desc="Training classifiers", unit="clf")
+        
+        # Background thread to update progress bar based on time estimate
+        import threading
+        stop_flag = threading.Event()
+        
+        def update_progress():
+            import time
+            # Rough estimate: each classifier takes ~0.5-2 seconds
+            # Update progress bar smoothly over estimated time
+            step = num_outputs / 100  # 100 updates
+            while not stop_flag.is_set() and pbar.n < num_outputs:
+                time.sleep(0.5)
+                pbar.update(min(step, num_outputs - pbar.n))
+            pbar.n = num_outputs
+            pbar.refresh()
+        
+        progress_thread = threading.Thread(target=update_progress)
+        progress_thread.start()
+        
+        try:
+            self.multi_output.fit(X_train, Y_train)
+        finally:
+            stop_flag.set()
+            progress_thread.join()
+            pbar.close()
         
         self.is_fitted = True
-        print("\n✅ Multi-Output Classifier training complete!")
+        print("✅ Multi-Output Classifier training complete!")
         print("="*60)
         
         return self
@@ -554,8 +581,13 @@ class BERTMultiOutputClassifier:
         X_test, Y_test = self._extract_embeddings(test_dataloader, desc="Test embeddings")
         
         print("\n🔮 Predicting probabilities with Multi-Output Classifier...")
-        # predict_proba returns list of arrays, we need to stack them
-        Y_proba_list = self.multi_output.predict_proba(X_test)
+        
+        # Create simple progress indication for prediction
+        num_outputs = Y_test.shape[1]
+        with tqdm(total=num_outputs, desc="Predicting", unit="clf", leave=False) as pbar:
+            # predict_proba returns list of arrays, we need to stack them
+            Y_proba_list = self.multi_output.predict_proba(X_test)
+            pbar.update(num_outputs)
         
         # Convert list of probabilities to 2D array
         # Each element is (n_samples, 2) for binary, we want probability of class 1
