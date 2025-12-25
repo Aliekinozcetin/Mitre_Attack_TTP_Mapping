@@ -159,7 +159,40 @@ class BERTClassifierChain:
         print(f"   Chain order: {self.chain.order}")
         print(f"   CV folds: {self.chain.cv}")
         
-        self.chain.fit(X_train, Y_train)
+        # Temporarily disable verbose for ClassifierChain to avoid 499 lines of output
+        # We'll show our own progress bar instead
+        original_verbose = self.chain.verbose
+        self.chain.verbose = False
+        
+        # Create custom progress bar for chain fitting
+        num_labels = Y_train.shape[1]
+        print(f"   Training chain with {num_labels} labels...")
+        with tqdm(total=num_labels, desc="   Fitting chain", unit="label", ncols=80) as pbar:
+            # Monkey-patch the chain to update progress
+            original_fit = type(self.chain).fit
+            
+            def fit_with_progress(chain_self, X, Y):
+                # Store original _fit_estimator method
+                from sklearn.multioutput import ClassifierChain as CC
+                original_fit_estimator = CC._fit_estimator
+                
+                def _fit_estimator_with_progress(chain_self_inner, estimator, X, y, k):
+                    result = original_fit_estimator(chain_self_inner, estimator, X, y, k)
+                    pbar.update(1)
+                    return result
+                
+                # Temporarily replace _fit_estimator
+                CC._fit_estimator = _fit_estimator_with_progress
+                try:
+                    result = original_fit(chain_self, X, Y)
+                finally:
+                    CC._fit_estimator = original_fit_estimator
+                return result
+            
+            fit_with_progress(self.chain, X_train, Y_train)
+        
+        # Restore verbose setting
+        self.chain.verbose = original_verbose
         
         self.is_fitted = True
         print("\n✅ Classifier Chain training complete!")
