@@ -193,6 +193,22 @@ def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.
     return metrics
 
 
+def calculate_multi_label_metrics(labels: np.ndarray, predictions: np.ndarray, label_names: list = None, threshold: float = 0.5) -> Dict:
+    """
+    Alias for compute_metrics with swapped parameter order for backwards compatibility.
+    
+    Args:
+        labels: True labels
+        predictions: Prediction probabilities
+        label_names: List of label names (optional, for compatibility)
+        threshold: Threshold for binary predictions
+        
+    Returns:
+        Dictionary of metrics
+    """
+    return compute_metrics(predictions, labels, threshold=threshold)
+
+
 def evaluate_model(
     model,
     test_dataset=None,
