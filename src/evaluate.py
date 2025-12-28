@@ -141,14 +141,14 @@ def calculate_at_k(probs: np.ndarray, labels: np.ndarray, k: int = 5) -> Tuple[f
     return np.mean(precisions), np.mean(recalls)
 
 
-def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.5) -> Dict:
+def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.3) -> Dict:
     """
     Compute evaluation metrics.
     
     Args:
         probs: Prediction probabilities
         labels: True labels
-        threshold: Threshold for binary predictions (used for F1)
+        threshold: Threshold for binary predictions (used for F1, default 0.3)
         
     Returns:
         Dictionary of metrics
@@ -193,7 +193,7 @@ def compute_metrics(probs: np.ndarray, labels: np.ndarray, threshold: float = 0.
     return metrics
 
 
-def calculate_multi_label_metrics(labels: np.ndarray, predictions: np.ndarray, label_names: list = None, threshold: float = 0.5) -> Dict:
+def calculate_multi_label_metrics(labels: np.ndarray, predictions: np.ndarray, label_names: list = None, threshold: float = 0.3) -> Dict:
     """
     Alias for compute_metrics with swapped parameter order for backwards compatibility.
     
@@ -215,7 +215,7 @@ def evaluate_model(
     test_dataloader=None,
     batch_size: int = 16,
     device: str = 'cuda',
-    threshold: float = 0.5,
+    threshold: float = 0.3,
     label_list: list = None,
     label_names: list = None  # Alias for label_list
 ) -> Dict:
@@ -228,7 +228,7 @@ def evaluate_model(
         test_dataloader: Test DataLoader (provide this OR test_dataset)
         batch_size: Batch size for evaluation (only used if test_dataset provided)
         device: Device to run on
-        threshold: Classification threshold
+        threshold: Classification threshold (default 0.3)
         label_list: List of label names (optional)
         label_names: Alias for label_list (optional)
         

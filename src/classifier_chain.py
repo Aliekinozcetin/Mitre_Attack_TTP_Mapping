@@ -308,7 +308,7 @@ def evaluate_classifier_chain(
     
     # Get predictions and probabilities
     Y_proba, Y_test = model.predict_proba(test_dataloader)
-    Y_pred = (Y_proba > 0.5).astype(int)
+    Y_pred = (Y_proba > 0.3).astype(int)  # Lower threshold for better recall
     
     print("\n" + "="*60)
     print("📊 CLASSIFIER CHAIN EVALUATION")
@@ -663,7 +663,7 @@ def evaluate_multi_output_classifier(
     
     # Get predictions and probabilities
     Y_proba, Y_test = model.predict_proba(test_dataloader)
-    Y_pred = (Y_proba > 0.5).astype(int)
+    Y_pred = (Y_proba > 0.3).astype(int)  # Lower threshold for better recall
     
     print("\n" + "="*60)
     print("📊 MULTI-OUTPUT CLASSIFIER EVALUATION")
