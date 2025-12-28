@@ -304,6 +304,7 @@ def evaluate_classifier_chain(
         recall_score,
         hamming_loss
     )
+    from src.evaluate import calculate_mean_average_precision
     
     # Get predictions and probabilities
     Y_proba, Y_test = model.predict_proba(test_dataloader)
@@ -320,6 +321,9 @@ def evaluate_classifier_chain(
     
     # Hamming Loss
     hamming = hamming_loss(Y_test, Y_pred)
+    
+    # Mean Average Precision
+    map_score = calculate_mean_average_precision(Y_proba, Y_test)
     
     # Calculate @K metrics (using probabilities)
     def calculate_at_k(probs: np.ndarray, labels: np.ndarray, k: int = 5):
@@ -352,6 +356,7 @@ def evaluate_classifier_chain(
         'micro_precision': micro_precision,
         'micro_recall': micro_recall,
         'hamming_loss': hamming,
+        'mean_average_precision': map_score,
         'precision_at_5': p5,
         'recall_at_5': r5,
         'precision_at_10': p10,
@@ -368,6 +373,7 @@ def evaluate_classifier_chain(
     print(f"  Recall:    {micro_recall:.4f}")
     
     print(f"\nRanking-based metrics:")
+    print(f"  mAP:         {map_score:.4f}")
     print(f"  Recall@5:    {r5:.4f}")
     print(f"  Precision@5: {p5:.4f}")
     print(f"  Recall@10:   {r10:.4f}")
@@ -653,6 +659,7 @@ def evaluate_multi_output_classifier(
         recall_score,
         hamming_loss
     )
+    from src.evaluate import calculate_mean_average_precision
     
     # Get predictions and probabilities
     Y_proba, Y_test = model.predict_proba(test_dataloader)
@@ -669,6 +676,9 @@ def evaluate_multi_output_classifier(
     
     # Hamming Loss
     hamming = hamming_loss(Y_test, Y_pred)
+    
+    # Mean Average Precision
+    map_score = calculate_mean_average_precision(Y_proba, Y_test)
     
     # Calculate @K metrics (using probabilities)
     def calculate_at_k(probs: np.ndarray, labels: np.ndarray, k: int = 5):
@@ -701,6 +711,7 @@ def evaluate_multi_output_classifier(
         'micro_precision': micro_precision,
         'micro_recall': micro_recall,
         'hamming_loss': hamming,
+        'mean_average_precision': map_score,
         'precision_at_5': p5,
         'recall_at_5': r5,
         'precision_at_10': p10,
@@ -717,6 +728,7 @@ def evaluate_multi_output_classifier(
     print(f"  Recall:    {micro_recall:.4f}")
     
     print(f"\nRanking-based metrics:")
+    print(f"  mAP:         {map_score:.4f}")
     print(f"  Recall@5:    {r5:.4f}")
     print(f"  Precision@5: {p5:.4f}")
     print(f"  Recall@10:   {r10:.4f}")
