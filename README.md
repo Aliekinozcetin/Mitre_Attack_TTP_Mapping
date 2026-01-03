@@ -9,7 +9,7 @@ Multi-label classification system to map Cyber Threat Intelligence reports to MI
 - Differential learning rate (encoder: 2e-5, classifier: 1e-4)
 
 **Dataset:** Security-TTP-Mapping (`tumeteor/Security-TTP-Mapping`)
-- 14,936 train + 2,638 test samples
+- 14,936 train + 3,170 test samples
 - 499 MITRE ATT&CK technique labels (multi-label)
 - Severe class imbalance (1:458 ratio)
 
@@ -113,26 +113,62 @@ PART C → Find best classifier (test all 10 combos)
 ## 📊 Evaluation Metrics
 
 ### Core Metrics
-- **Micro-F1:** Overall performance (main metric)
-- **Macro-F1:** Per-class average (imbalance indicator)
-- **Example-Based Accuracy (Subset Accuracy):** Exact match per sample
+- **Micro-F1:** Overall performance across all labels
+- **Micro-Precision/Recall:** Component metrics for F1
+- **Hamming Loss:** Fraction of wrong labels (lower is better)
+- **Example-Based Accuracy:** Exact match per sample (strict metric)
 
 ### Ranking Metrics (SOC Analyst Perspective)
-- **mAP (Mean Average Precision):** Measures ranking quality - rewards models that place correct TTPs at the top of the prediction list. Critical for SOC analysts who review top predictions.
-- **Recall@5/10:** How many true TTPs appear in top-K predictions
-- **Precision@5/10:** What fraction of top-K predictions are correct
+- **mAP (Mean Average Precision):** Ranking quality - rewards correct TTPs at top of list ⭐ **Most Important**
+- **Recall@5:** Percentage of true TTPs in top-5 predictions
+- **Precision@5:** Accuracy of top-5 predictions
+- **Recall@10:** Percentage of true TTPs in top-10 predictions (CSV only)
+- **Precision@10:** Accuracy of top-10 predictions (CSV only)
 
 ### Why These Metrics?
 This is effectively a **recommendation system for SOC analysts**:
-- **mAP** evaluates the entire ranking (better than Recall@K alone)
-- **Recall@5** matters because analysts typically review top 5-10 predictions
-- **Subset Accuracy** is strict but shows perfect classification capability
+- **mAP** evaluates entire ranking (better than Recall@K alone)
+- **Recall@5** matters because analysts review top 5 predictions first
+- **Hamming Loss** shows overall prediction accuracy
+- Top-10 metrics included in CSV exports for detailed analysis
 
-Results saved to `outputs/bert-base-uncased_[timestamp]/`:
-- `final_model.pt` - Best checkpoint
-- `evaluation_metrics.json` - All metrics (including mAP)
-- `training_history.json` - Loss/accuracy curves
-- `summary.json` - Configuration + results
+### Results Output
+
+Each experiment generates comprehensive outputs:
+
+**Model Checkpoints:**
+- `outputs/bert-base-uncased_[timestamp]/final_model.pt`
+- `outputs/bert-base-uncased_[timestamp]/checkpoint_epoch_*.pt`
+
+**Metrics & Logs:**
+- `evaluation_metrics.json` - All metrics (F1, mAP, Recall@K, etc.)
+- `training_history.json` - Loss/accuracy curves per epoch
+- `summary.json` - Configuration + final results
+- `labels.json` - Label mappings
+
+**Comparison Tables (CSV):**
+- `outputs/augmentation_comparison.csv` - Part A results
+- `outputs/loss_function_comparison.csv` - Part B-1 results
+- `outputs/topk_analysis.csv` - Part B-2 results
+- `outputs/hybrid_strategies_comparison.csv` - Part C results
+
+All CSVs include Training_Time_min and all metrics (including @10)
+
+**Visualizations (Line Charts with Best Score Markers):**
+
+Each comparison generates line charts with:
+- Smooth lines connecting strategy performances
+- Filled area under curves
+- Red star (⭐) markers at best scores
+- Value labels on data points
+- Professional styling (300 DPI)
+
+Example plots:
+- `outputs/augmentation_plots/micro_f1_comparison.png`
+- `outputs/loss_function_plots/map_comparison.png`
+- `outputs/hybrid_strategies_plots/recall_at_5.png`
+
+**Note:** Visualizations show @5 metrics only. @10 metrics available in CSV files.
 
 ## 🔧 Implementation Notes
 
@@ -143,6 +179,8 @@ Based on state-of-the-art CTI classification research:
 3. **Sliding Windows**: Handles variable-length threat intelligence documents
 4. **XMC Methods**: AttentionXML and LightXML for efficient large-scale multi-label classification
 5. **mAP Metric**: Evaluates ranking quality (critical for recommendation systems)
+6. **Line Chart Visualizations**: Track performance trends across strategies with best score markers
+7. **Comprehensive Exports**: CSV files with all metrics for detailed post-analysis
 
 ### Architecture Highlights
 - **AttentionXML**: Label-specific attention (499 attention query vectors)
