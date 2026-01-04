@@ -1,15 +1,10 @@
-"""
-Data loading and preprocessing module for CTI-BERT TTP tagging.
-Handles loading and combining multiple MITRE ATT&CK datasets.
+"""Data loading and preprocessing module for CTI-BERT TTP tagging.
+
+This project uses a single dataset by default:
+- tumeteor/Security-TTP-Mapping
 
 Model: ibm-research/CTI-BERT - Domain-specific BERT pre-trained on CTI data
 Reference: https://huggingface.co/ibm-research/CTI-BERT
-
-Hybrid Dataset Mode (Default):
-- Combines tumeteor/Security-TTP-Mapping (14.9k samples)
-- sarahwei/cyber_MITRE_attack_tactics-and-techniques (654 samples)
-- Zainabsa99/mitre_attack (508 samples)
-- Total: ~16k samples with improved label distribution
 """
 
 from datasets import load_dataset
@@ -208,151 +203,6 @@ def load_ttp_dataset(
     return train_df, test_df
 
 
-def load_hybrid_dataset(test_split_ratio: float = 0.15) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Load and combine multiple MITRE ATT&CK datasets from Hugging Face.
-    
-    Combines:
-    - tumeteor/Security-TTP-Mapping (14.9k samples)
-    - sarahwei/cyber_MITRE_attack_tactics-and-techniques (654 samples)
-    - Zainabsa99/mitre_attack (508 samples)
-    
-    Args:
-        test_split_ratio: Ratio of data to use for testing (for datasets without splits)
-        
-    Returns:
-        Tuple of (train_df, test_df)
-    """
-    datasets_config = [
-        {
-            'name': 'tumeteor/Security-TTP-Mapping',
-            'text_column': 'text1',
-            'label_column': 'labels',
-            'use_validation': True
-        },
-        {
-            'name': 'sarahwei/cyber_MITRE_attack_tactics-and-techniques',
-            'text_column': 'text',
-            'label_column': 'techniques',
-            'use_validation': False
-        },
-        {
-            'name': 'Zainabsa99/mitre_attack',
-            'text_column': 'description',
-            'label_column': 'technique_id',
-            'use_validation': False
-        }
-    ]
-    
-    all_train_dfs = []
-    all_test_dfs = []
-    
-    print(f"\n{'='*70}")
-    print("🔥 HYBRID DATASET MODE - Combining Multiple Sources")
-    print(f"{'='*70}\n")
-    
-    for config in datasets_config:
-        dataset_name = config['name']
-        print(f"📦 Loading: {dataset_name}")
-        
-        try:
-            dataset = load_dataset(dataset_name)
-            
-            # Debug: print available columns
-            if 'train' in dataset.keys():
-                print(f"   Available columns: {list(dataset['train'].column_names)}")
-            
-            # Handle different split configurations
-            if config.get('use_validation', False) and 'validation' in dataset.keys():
-                train_df = pd.DataFrame(dataset['train'])
-                test_df = pd.DataFrame(dataset['validation'])
-                print(f"   ✅ Using train + validation splits")
-            elif 'train' in dataset.keys() and 'test' in dataset.keys():
-                train_df = pd.DataFrame(dataset['train'])
-                test_df = pd.DataFrame(dataset['test'])
-                print(f"   ✅ Using train + test splits")
-            elif 'train' in dataset.keys():
-                full_df = pd.DataFrame(dataset['train'])
-                split_idx = int(len(full_df) * (1 - test_split_ratio))
-                train_df = full_df.iloc[:split_idx].reset_index(drop=True)
-                test_df = full_df.iloc[split_idx:].reset_index(drop=True)
-                print(f"   ✅ Split into {len(train_df)} train / {len(test_df)} test")
-            else:
-                print(f"   ⚠️  Unexpected structure, skipping")
-                continue
-            
-            # Standardize column names
-            text_col = config['text_column']
-            label_col = config['label_column']
-            
-            # Check if columns exist
-            if text_col not in train_df.columns:
-                print(f"   ⚠️  Text column '{text_col}' not found. Available: {list(train_df.columns)}")
-                # Try to find text column
-                possible_text_cols = ['text', 'description', 'content', 'sentence', 'question']
-                for col in possible_text_cols:
-                    if col in train_df.columns:
-                        text_col = col
-                        print(f"   ✅ Using '{col}' as text column")
-                        break
-                else:
-                    print(f"   ⚠️  No suitable text column found, skipping\n")
-                    continue
-            
-            if label_col not in train_df.columns:
-                print(f"   ⚠️  Label column '{label_col}' not found. Available: {list(train_df.columns)}")
-                # Try to find label column
-                possible_label_cols = ['labels', 'techniques', 'technique_id', 'technique', 'tactics']
-                for col in possible_label_cols:
-                    if col in train_df.columns:
-                        label_col = col
-                        print(f"   ✅ Using '{col}' as label column")
-                        break
-                else:
-                    print(f"   ⚠️  No suitable label column found, skipping\n")
-                    continue
-            
-            if text_col in train_df.columns and label_col in train_df.columns:
-                train_df = train_df[[text_col, label_col]].rename(
-                    columns={text_col: 'text', label_col: 'labels'}
-                )
-                test_df = test_df[[text_col, label_col]].rename(
-                    columns={text_col: 'text', label_col: 'labels'}
-                )
-                
-                all_train_dfs.append(train_df)
-                all_test_dfs.append(test_df)
-                print(f"   ✅ Added {len(train_df)} train + {len(test_df)} test samples\n")
-            else:
-                print(f"   ⚠️  Missing required columns after auto-detection, skipping\n")
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}\n")
-            continue
-    
-    if not all_train_dfs:
-        raise ValueError("No datasets were successfully loaded!")
-    
-    # Combine all datasets
-    print(f"{'='*70}")
-    print("📊 Combining Datasets...")
-    print(f"{'='*70}")
-    
-    combined_train = pd.concat(all_train_dfs, ignore_index=True)
-    combined_test = pd.concat(all_test_dfs, ignore_index=True)
-    
-    # Shuffle
-    combined_train = combined_train.sample(frac=1, random_state=42).reset_index(drop=True)
-    combined_test = combined_test.sample(frac=1, random_state=42).reset_index(drop=True)
-    
-    print(f"✅ Hybrid Dataset Created:")
-    print(f"   Total train samples: {len(combined_train):,}")
-    print(f"   Total test samples: {len(combined_test):,}")
-    print(f"{'='*70}\n")
-    
-    return combined_train, combined_test
-
-
 def get_label_list(train_df: pd.DataFrame, label_column: str = 'labels') -> list:
     """
     Extract unique labels from the dataset.
@@ -435,7 +285,6 @@ def encode_labels(df: pd.DataFrame, label_list: list, label_column: str = 'label
 def prepare_data(
     model_name: str = "ibm-research/CTI-BERT",
     max_length: int = 512,
-    use_hybrid: bool = True,
     dataset_name: str = "tumeteor/Security-TTP-Mapping"
 ) -> Dict:
     """
@@ -444,23 +293,18 @@ def prepare_data(
     Args:
         model_name: Pretrained model name for tokenizer
         max_length: Maximum sequence length
-        use_hybrid: If True, use hybrid dataset (tumeteor + sarahwei + Zainabsa99)
-                   If False, use single dataset specified by dataset_name
-        dataset_name: Single dataset name (only used if use_hybrid=False)
+        dataset_name: Dataset name on Hugging Face Hub
         
     Returns:
         Dictionary containing datasets, tokenizer, and label information
     """
-    # Load dataset
-    if use_hybrid:
-        train_df, test_df = load_hybrid_dataset()
-    else:
-        print(f"📦 Single Dataset Mode: {dataset_name}\n")
-        train_df, test_df = load_ttp_dataset(dataset_name=dataset_name)
-        # Standardize column names for single dataset
-        if 'text1' in train_df.columns:
-            train_df = train_df.rename(columns={'text1': 'text'})
-            test_df = test_df.rename(columns={'text1': 'text'})
+    # Load dataset (single dataset only)
+    print(f"📦 Dataset: {dataset_name}\n")
+    train_df, test_df = load_ttp_dataset(dataset_name=dataset_name)
+    # Standardize column names for this dataset
+    if 'text1' in train_df.columns:
+        train_df = train_df.rename(columns={'text1': 'text'})
+        test_df = test_df.rename(columns={'text1': 'text'})
     
     # Get label list
     label_list = get_label_list(train_df, 'labels')
@@ -519,7 +363,6 @@ def load_datasets_and_prepare_dataloaders(
     model_name: str = "ibm-research/CTI-BERT",
     batch_size: int = 16,
     max_length: int = 512,
-    use_hybrid: bool = True,
     dataset_name: str = "tumeteor/Security-TTP-Mapping"
 ) -> Tuple:
     """
@@ -530,8 +373,7 @@ def load_datasets_and_prepare_dataloaders(
         model_name: Pretrained model name for tokenizer
         batch_size: Batch size for dataloaders
         max_length: Maximum sequence length
-        use_hybrid: If True, use hybrid dataset
-        dataset_name: Single dataset name (only used if use_hybrid=False)
+        dataset_name: Dataset name on Hugging Face Hub
         
     Returns:
         Tuple of (train_loader, val_loader, test_dataset, label_encoder)
@@ -540,7 +382,6 @@ def load_datasets_and_prepare_dataloaders(
     data = prepare_data(
         model_name=model_name,
         max_length=max_length,
-        use_hybrid=use_hybrid,
         dataset_name=dataset_name
     )
     
@@ -560,12 +401,12 @@ def load_datasets_and_prepare_dataloaders(
 
 
 if __name__ == "__main__":
-    # Test hybrid dataset loading
+    # Smoke test (single dataset)
     print("="*70)
-    print("Testing HYBRID dataset loading...")
+    print("Testing dataset loading...")
     print("="*70)
     
-    data = prepare_data(use_hybrid=True, max_length=128)
+    data = prepare_data(max_length=128)
     
     print(f"\n{'='*70}")
     print("DATASET SUMMARY")
